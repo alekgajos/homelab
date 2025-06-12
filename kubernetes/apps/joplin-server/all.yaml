@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: joplin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: joplin
+  template:
+    metadata:
+      labels:
+        app: joplin
+    spec:
+      containers:
+        - name: joplin
+          image: joplin/server:latest
+          ports:
+            - containerPort: 22300
+              protocol: TCP
+          env:
+            - name: APP_BASE_URL
+              value: "http://192.168.0.146:30001"
+            - name: APP_PORT
+              value: "22300"
+            - name: DB_CLIENT
+              value: pg
+            - name: POSTGRES_DATABASE
+              value: joplin
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_HOST
+              value: joplin-db-service.default.svc.cluster.local 
+              
+      restartPolicy: Always
+---
+# Joplin server service
+apiVersion: v1
+kind: Service
+metadata:
+  name: joplin-service
+spec:
+  # service identifies the pod using a selector
+  # matching labels from the deployment
+  selector:
+    app: joplin
+  ports:
+    - name: "22300"
+      port: 22300
+      protocol: TCP
+      targetPort: 22300
+      nodePort: 30001
+  type: NodePort
+---
+# database  deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: joplin-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: joplin-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: joplin-db
+    spec:
+      containers:
+        - name: db
+          env:
+            - name: POSTGRES_DB
+              value: joplin
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: joplin-db-volume
+      restartPolicy: Always
+      volumes:
+        - name: joplin-db-volume
+          persistentVolumeClaim:
+            claimName: joplin-db-volume-claim
+---
+# DB volume claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: joplin-db-volume-claim
+spec:
+  storageClassName: local-storage
+  selector:
+    matchLabels:
+      purpose: joplin
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# DB service
+apiVersion: v1
+kind: Service
+metadata:
+  name: joplin-db-service
+spec:
+  ports:
+    - name: "5432"
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: joplin-db

@@ -1,0 +1,116 @@
+# database deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lxm-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lxm-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: lxm-db
+    spec:
+      containers:
+        - env:
+            - name: POSTGRES_DB
+              value: lbs
+            - name: POSTGRES_PASSWORD
+              value: lsb123
+            - name: POSTGRES_USER
+              value: lbs
+            - name: TZ
+              value: Europe/Warsaw
+          image: postgres:10.6
+          name: database
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres
+      restartPolicy: Always
+      volumes:
+        - name: postgres
+---
+# database service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lxm-db
+  name: lxm-db-service
+spec:
+  ports:
+    - name: "5432"
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: lxm-db
+---
+# app deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: lxm
+  name: lxm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lxm
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: lxm
+    spec:
+      containers:
+        - env:
+            - name: DB_HOST
+              value: lxm-db-service.default.svc.cluster.local
+            - name: DB_PORT
+              value: "5432"
+            - name: SECURITY_SECRET
+              valueFrom:
+                configMapKeyRef:
+                  key: SECURITY_SECRET
+                  name: secrets-env
+            - name: TELEGRAM_TOKEN
+              valueFrom:
+                configMapKeyRef:
+                  key: TELEGRAM_TOKEN
+                  name: secrets-env
+          image: eugenezadyra/luxmed-bot:latest
+          name: lxm
+          ports:
+            - containerPort: 59887
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /lbs
+              name: lbs
+      restartPolicy: Always
+      volumes:
+        - name: lbs
+---
+# app service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lxm
+  name: lxm-service
+spec:
+  ports:
+    - name: "59887"
+      port: 59887
+      targetPort: 59887
+  selector:
+    app: lxm
+
