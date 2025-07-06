@@ -79,14 +79,16 @@ spec:
               value: "5432"
             - name: SECURITY_SECRET
               valueFrom:
-                configMapKeyRef:
+                # configMapKeyRef:
+                secretKeyRef:
                   key: SECURITY_SECRET
-                  name: secrets-env
+                  name: lxm-secrets-env
             - name: TELEGRAM_TOKEN
               valueFrom:
-                configMapKeyRef:
+                # configMapKeyRef:
+                secretKeyRef:
                   key: TELEGRAM_TOKEN
-                  name: secrets-env
+                  name: lxm-secrets-env
           image: eugenezadyra/luxmed-bot:latest
           name: lxm
           ports:

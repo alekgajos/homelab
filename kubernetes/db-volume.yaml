@@ -28,6 +28,36 @@ spec:
               values:
                 - k3s-worker0
 ---
+# DB Persistent Volume for Bookstack
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bookstack-db-volume
+  labels:
+    purpose: bookstack
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /data/kubernetes/bookstack-db/
+  nodeAffinity:
+    # note: local store will only work
+    # when node affinity mathches a single node
+    # otherwise, the corresponding PVC will not
+    # match it.
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - k3s-worker0
+---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

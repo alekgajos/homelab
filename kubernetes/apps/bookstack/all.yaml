@@ -1,0 +1,139 @@
+---
+# DB volume claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bookstack-db-volume-claim
+spec:
+  storageClassName: local-storage
+  selector:
+    matchLabels:
+      # important! this label is used to match PVC to PV
+      purpose: bookstack
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# database  deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstack-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookstack-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: bookstack-db
+    spec:
+      containers:
+        - name: db
+          env:
+            - name: PUID
+              value: "1001"
+            - name: PGID
+              value: "986"
+            - name: MYSQL_ROOT_PASSWORD
+              value: "bookstack"
+            - name: MYSQL_DATABASE
+              value: "bookstack"
+            - name: MYSQL_USER
+              value: "bookstack"  
+            - name: MYSQL_PASSWORD
+              value: "bookstack"
+            - name: TZ
+              value: "Europe/Warsaw"
+          image: linuxserver/mariadb
+          ports:
+            - containerPort: 3306
+              protocol: TCP
+          volumeMounts:
+            - mountPath: "/config"
+              name: bookstack-db-volume
+      restartPolicy: Always
+      volumes:
+        - name: bookstack-db-volume
+          persistentVolumeClaim:
+            claimName: bookstack-db-volume-claim
+---
+# DB service
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookstack-db-service
+spec:
+  ports:
+    - name: "3306"
+      port: 3306
+      # TODO: whay is targetPort?
+      targetPort: 3306
+  selector:
+    app: bookstack-db
+---
+# app deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookstack
+  template:
+    metadata:
+      labels:
+        app: bookstack
+    spec:
+      containers:
+        - name: bookstack
+          image: linuxserver/bookstack
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          env:
+            - name: PUID
+              value: "1001"
+            - name: PGID
+              value: "986"
+            - name: DB_HOST
+              value: bookstack-db-service.default.svc.cluster.local
+            - name: DB_USERNAME
+              value: "bookstack"
+            - name: DB_PASSWORD
+              value: "bookstack"
+            - name: DB_DATABASE
+              value: "bookstack" 
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: APP_KEY
+                  name: bookstack-secrets-env
+            - name: APP_URL
+              value: "http://10.0.0.1:30002"
+      restartPolicy: Always
+---
+# bookstack server service
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookstack-service
+spec:
+  # service identifies the pod using a selector
+  # matching labels from the deployment
+  selector:
+    app: bookstack
+  ports:
+    - name: "80"
+      port: 80
+      protocol: TCP
+      targetPort: 80
+      nodePort: 30002
+  type: NodePort
