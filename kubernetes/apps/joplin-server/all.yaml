@@ -20,7 +20,7 @@ spec:
               protocol: TCP
           env:
             - name: APP_BASE_URL
-              value: "http://192.168.0.146:30001"
+              value: "http://10.0.0.1:30001"
             - name: APP_PORT
               value: "22300"
             - name: DB_CLIENT
