@@ -46,10 +46,6 @@ spec:
   local:
     path: /data/kubernetes/bookstack-db/
   nodeAffinity:
-    # note: local store will only work
-    # when node affinity mathches a single node
-    # otherwise, the corresponding PVC will not
-    # match it.
     required:
       nodeSelectorTerms:
         - matchExpressions:
