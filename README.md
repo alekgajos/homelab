@@ -25,9 +25,11 @@ The Incus containers are managed with Terraform using [terraform-provider-incus]
 
 * [kubernetes](kubernetes/README.md) - manifest files for infrastructure and services running in the virtual cluster,
 
-* [terraform](terraform/README.md) - TF configuration of the machines comprising the cluster.
+* [terraform](terraform/README.md) - TF configuration of the machines comprising the cluster,
+
+* [nftables](nftables/) - firewall config.
 
 ## TODO
 
-* [ ] Kubernetes log aggregation
+* [ ] Kubernetes log aggregation with object storage backend
 * [ ] Reverse proxy for services running in the cluster
